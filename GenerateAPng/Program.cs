@@ -20,6 +20,8 @@ namespace GenerateAPng
     class Program
     {
         private const int NumOfFrame = 12;
+        private const int APngWidth = 100;
+        private const int APngHeight = 100;
 
         static void Main(string[] args)
         {
@@ -50,7 +52,9 @@ namespace GenerateAPng
                 }
                 WriteIend(fs);
             }
+#if true
             ReadPngFile(@"apng.png");
+#endif
         }
 
         // 1コマ分のPNG画像を生成する。
@@ -77,12 +81,85 @@ namespace GenerateAPng
                                (int)(Width / 2 + Math.Cos(angle) * Width * 0.5),
                                (int)(Height / 2 + Math.Sin(angle) * Height * 0.5));
                 }
-                using (Bitmap resizedBitmap = new Bitmap(100, 100))
+                using (Bitmap resizedBitmap = new Bitmap(APngWidth, APngHeight))
                 using (Graphics resizeG = Graphics.FromImage(resizedBitmap))
                 using (MemoryStream ms = new MemoryStream())
                 {
                     resizeG.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                    resizeG.DrawImage(bitmap, 0, 0, 100, 100);
+                    resizeG.DrawImage(bitmap, 0, 0, APngWidth, APngHeight);
+                    // resizedBitmap.Save("test" + frame.ToString("00") + ".png", ImageFormat.Png);
+                    resizedBitmap.Save(ms, ImageFormat.Png);
+                    ret = ms.ToArray();
+                }
+            }
+            return ret;
+        }
+
+        // 1コマ分のPNG画像を生成する(点がくるくる回る版)。
+        static byte[] CreatePng2(int frame)
+        {
+            const int Width = 400;
+            const int Height = 400;
+            const int NumOfLine = 12;
+            byte[] ret = null;
+
+            using (Bitmap bitmap = new Bitmap(Width, Height))
+            using (Graphics g = Graphics.FromImage(bitmap))
+            using (Brush backBrush = new SolidBrush(Color.FromArgb(0, 0, 0, 0)))
+            {
+                g.FillRectangle(backBrush, 0, 0, Width, Height);
+                for (int i = 0; i < NumOfLine; i++)
+                {
+                    int alpha = (int)(255 * ((NumOfLine - i) / (double)NumOfLine));
+                    Brush brush = new SolidBrush(Color.FromArgb(alpha, 255, 255, 255));
+                    double angle = (NumOfLine - i + frame) * Math.PI * 2 / NumOfLine - (Math.PI / 2);
+                    g.FillEllipse(brush,
+                               (int)(Width / 2 + Math.Cos(angle) * Width * 0.4) - 20,
+                               (int)(Height / 2 + Math.Sin(angle) * Height * 0.4) - 20,
+                               40, 40);
+                }
+                using (Bitmap resizedBitmap = new Bitmap(APngWidth, APngHeight))
+                using (Graphics resizeG = Graphics.FromImage(resizedBitmap))
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    resizeG.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                    resizeG.DrawImage(bitmap, 0, 0, APngWidth, APngHeight);
+                    // resizedBitmap.Save("test" + frame.ToString("00") + ".png", ImageFormat.Png);
+                    resizedBitmap.Save(ms, ImageFormat.Png);
+                    ret = ms.ToArray();
+                }
+            }
+            return ret;
+        }
+
+
+        // 1コマ分のPNG画像を生成する。
+        static byte[] CreatePng3(int frame)
+        {
+            const int Width = 400;
+            const int Height = 400;
+            const int NumOfLine = 12;
+            byte[] ret = null;
+
+            using (Bitmap bitmap = new Bitmap(Width, Height))
+            using (Graphics g = Graphics.FromImage(bitmap))
+            using (Brush backBrush = new SolidBrush(Color.FromArgb(0, 0, 0, 0)))
+            {
+                g.FillRectangle(backBrush, 0, 0, Width, Height);
+                for (int i = 0; i < NumOfLine; i++)
+                {
+                    int alpha = (int)(255 * ((NumOfLine - i) / (double)NumOfLine));
+                    Pen pen = new Pen(Color.FromArgb(alpha, 180, 255, 180), 40);
+                    double angle = (NumOfLine - i + frame) * 360 / NumOfLine - 90;
+                    g.DrawArc(pen,
+                              30, 30, Width - 60, Height - 60, (float)angle, -(360 / 12));
+                }
+                using (Bitmap resizedBitmap = new Bitmap(APngWidth, APngHeight))
+                using (Graphics resizeG = Graphics.FromImage(resizedBitmap))
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    resizeG.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                    resizeG.DrawImage(bitmap, 0, 0, APngWidth, APngHeight);
                     // resizedBitmap.Save("test" + frame.ToString("00") + ".png", ImageFormat.Png);
                     resizedBitmap.Save(ms, ImageFormat.Png);
                     ret = ms.ToArray();
@@ -169,7 +246,7 @@ namespace GenerateAPng
             uint crc = ReadInt32(buf, idx + chunkSize + 8);
             byte[] dataBuf = new byte[chunkSize + 4];
             Array.Copy(buf, idx + 4, dataBuf, 0, chunkSize + 4);
-            uint computedCrc = Crc32.calcCrc(dataBuf);
+            uint computedCrc = Crc32.CalcCrc(dataBuf);
             Debug.Assert(crc == computedCrc);
             // チャンクサイズはデータ部のみを指すので、チャンクサイズ、チャンクの種類、
             // 末尾のCRCの分で4バイト3つ分の12を加える。
@@ -277,16 +354,8 @@ namespace GenerateAPng
             Array.Copy(chunk.Data, 0, buf, 4, chunk.Data.Length);
 
             fs.Write(buf, 0, buf.Length);
-            uint crc = Crc32.calcCrc(buf);
+            uint crc = Crc32.CalcCrc(buf);
             WriteInt32(fs, crc);
-        }
-
-        private static void WriteString(FileStream fs, string str)
-        {
-            for (int i = 0; i < str.Length; i++)
-            {
-                fs.WriteByte((byte)str[i]);
-            }
         }
 
         private static void WriteActl(FileStream fs)
@@ -297,7 +366,7 @@ namespace GenerateAPng
             Int32ToByteArray(NumOfFrame, buf, 4); // num_frames
             Int32ToByteArray(0, buf, 8); // num_plays
             fs.Write(buf, 0, buf.Length);
-            uint crc = Crc32.calcCrc(buf);
+            uint crc = Crc32.CalcCrc(buf);
             WriteInt32(fs, crc);
         }
 
@@ -310,9 +379,9 @@ namespace GenerateAPng
             offset += 4;
             Int32ToByteArray((uint)sequence, buf, offset);
             offset += 4;
-            Int32ToByteArray(100, buf, offset); // width
+            Int32ToByteArray(APngWidth, buf, offset); // width
             offset += 4;
-            Int32ToByteArray(100, buf, offset); // height
+            Int32ToByteArray(APngHeight, buf, offset); // height
             offset += 4;
             Int32ToByteArray(0, buf, offset); // x_offset
             offset += 4;
@@ -322,12 +391,12 @@ namespace GenerateAPng
             offset += 2;
             Int16ToByteArray(1000, buf, offset); // delay_den
             offset += 2;
-            buf[offset++] = 1;
-            buf[offset++] = 0;
+            buf[offset++] = 0;  // dispose_op
+            buf[offset++] = 0;  // blend_op
             Debug.Assert(offset == 30);
 
             fs.Write(buf, 0, buf.Length);
-            uint crc = Crc32.calcCrc(buf);
+            uint crc = Crc32.CalcCrc(buf);
             WriteInt32(fs, crc);
         }
 
@@ -340,7 +409,7 @@ namespace GenerateAPng
             Array.Copy(chunk.Data, 0, buf, 8, chunk.Data.Length);
 
             fs.Write(buf, 0, buf.Length);
-            uint crc = Crc32.calcCrc(buf);
+            uint crc = Crc32.CalcCrc(buf);
             WriteInt32(fs, crc);
         }
 
@@ -350,7 +419,7 @@ namespace GenerateAPng
             byte[] buf = new byte[4];
             StringToByteArray("IEND", buf, 0);
             fs.Write(buf, 0, buf.Length);
-            uint crc = Crc32.calcCrc(buf);
+            uint crc = Crc32.CalcCrc(buf);
             WriteInt32(fs, crc);
         }
 

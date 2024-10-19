@@ -8,9 +8,9 @@ namespace GenerateAPng
 {
     class Crc32
     {
-        private static uint[] crcTable = makeCrcTable();
+        private static uint[] crcTable = MakeCrcTable();
 
-        private static uint[] makeCrcTable()
+        private static uint[] MakeCrcTable()
         {
             crcTable = new uint[256];
 
@@ -35,7 +35,7 @@ namespace GenerateAPng
             return crcTable;
         }
 
-        private static uint updateCrc(uint crc, byte[] buf)
+        private static uint UpdateCrc(uint crc, byte[] buf)
         {
             uint c = crc;
             int n;
@@ -47,9 +47,9 @@ namespace GenerateAPng
             return c;
         }
 
-        public static uint calcCrc(byte[] buf)
+        public static uint CalcCrc(byte[] buf)
         {
-            return updateCrc(0xffffffff, buf) ^ 0xffffffff;
+            return UpdateCrc(0xffffffff, buf) ^ 0xffffffff;
         }
     }
 }
