@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 
 namespace GenerateAPng
 {
+    // このコードは以下のPNG仕様書のAppendixからの移植版です。
+    // https://datatracker.ietf.org/doc/html/rfc2083#section-15
     class Crc32
     {
         private static uint[] crcTable = MakeCrcTable();
